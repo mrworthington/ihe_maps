@@ -1,0 +1,85 @@
+---
+title: "Institutions of Higher Education in Texas"
+description: | 
+  This article shows how to map this data by county in R. 
+date: December 7, 2020
+author:
+  - first_name: "Matthew"
+    last_name: "Worthington"
+    url: https://github.com/mrworthington
+output:
+  distill::distill_article:
+    df_print: paged
+    toc: true
+    css: styles.css
+---
+
+## Load R Packages
+
+This code chunk loads all of the required R packages to use the code below this chunk. 
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+library(tidyverse)     # Core Set of R Data Science Tools (dplyr, ggplot2, tidy, etc.)
+library(janitor)       # Package with useful + convenient data cleaning functions
+library(sf)            # Package for working with spatial Data
+library(readxl)        # Package for reading/writing excel data Files
+library(tidycensus)    # Package for working with census data
+library(mapview)       # Package for interactive mapping. Mostly for previewing products.
+library(ggmap)         # Package for geocoding addresses. Tidyverse friendly.
+mapviewOptions(fgb = FALSE)
+```
+
+## Import Data
+
+```{r, echo=TRUE}
+ihe_address_raw <- read_excel("raw_data/2020.12.05 Texas IHEs_Listening Tour.xlsx") %>% 
+  clean_names() %>% 
+  unite("address_full", c("address", "city", "state", "zip_code"), sep=", ", remove = FALSE)
+```
+
+## Geocode IHE Addresses
+
+### Using Google's Geocoder
+
+```{r eval=FALSE, include=FALSE}
+register_google(key = "GOOGLE_MAPS_KEY", account_type = "premium", day_limit = 100000) 
+
+ihe_address_geocoded <- mutate_geocode(ihe_address_raw, location=address_full,force=TRUE) 
+
+write_rds(ihe_address_geocoded, "clean_data/ihe_geocoded_information.rds")
+```
+
+```r
+register_google(key = "GOOGLE_MAPS_KEY", account_type = "premium", day_limit = 100000)
+
+ihe_address_geocoded <- mutate_geocode(ihe_address_raw, location=address_full,force=TRUE) 
+
+```
+
+```{r include=FALSE}
+ihe_address_geocoded <- read_rds("clean_data/ihe_geocoded_information.rds")
+```
+
+
+```{r, echo=TRUE}
+ihe_locations_sf <- ihe_address_geocoded %>% 
+  drop_na(lon) %>% 
+  st_as_sf(coords = c("lon", "lat"), crs = 4326)
+```
+
+## Pull in TX County-Level Boundaries
+
+```{r, echo=TRUE}
+county_sf <- tidycensus::county_laea %>% 
+  filter(str_detect(GEOID, "^48"))
+```
+
+## Map IHEs
+
+```{r, layout = "l-screen", fig.height=8, echo=TRUE}
+m1 <- mapview(county_sf, col.regions = "snow", legend=FALSE, map.types = "CartoDB.Positron") +
+  mapview(ihe_locations_sf, zcol = "institution_type", cex = 7, alpha =0)
+
+m1
+```
+
