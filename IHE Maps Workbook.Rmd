@@ -37,9 +37,7 @@ ihe_address_raw <- read_excel("raw_data/2020.12.05 Texas IHEs_Listening Tour.xls
   unite("address_full", c("address", "city", "state", "zip_code"), sep=", ", remove = FALSE)
 ```
 
-## Geocode IHE Addresses
-
-### Using Google's Geocoder
+## Geocode IHE Addresses Using Google Maps API
 
 ```{r eval=FALSE, include=FALSE}
 register_google(key = "GOOGLE_MAPS_KEY", account_type = "premium", day_limit = 100000) 
@@ -60,6 +58,7 @@ ihe_address_geocoded <- mutate_geocode(ihe_address_raw, location=address_full,fo
 ihe_address_geocoded <- read_rds("clean_data/ihe_geocoded_information.rds")
 ```
 
+## Convert Geocoded Coordinates to SF Object
 
 ```{r, echo=TRUE}
 ihe_locations_sf <- ihe_address_geocoded %>% 
@@ -67,7 +66,7 @@ ihe_locations_sf <- ihe_address_geocoded %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326)
 ```
 
-## Pull in TX County-Level Boundaries
+## Pull in TX County-Level SF Data
 
 ```{r, echo=TRUE}
 county_sf <- tidycensus::county_laea %>% 
